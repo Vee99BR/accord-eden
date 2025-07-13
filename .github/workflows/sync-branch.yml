@@ -1,0 +1,57 @@
+name: Sync "Branch" from "eden-emu.dev"
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_to_sync:
+        description: 'Branch to sync from upstream'
+        required: true
+
+jobs:
+  sync-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set variables
+        id: vars
+        run: echo "BRANCH=${{ github.event.inputs.branch_to_sync }}" >> $GITHUB_OUTPUT
+
+      - name: Check if branch exists in upstream
+        id: upstream
+        run: |
+          BRANCH=${{ steps.vars.outputs.BRANCH }}
+          UP_HASH=$(git ls-remote https://git.eden-emu.dev/eden-emu/eden.git refs/heads/$BRANCH | cut -f1)
+          if [ -z "$UP_HASH" ]; then
+            echo "❌ Branch '$BRANCH' does not exist in upstream."
+            exit 1
+          fi
+          echo "hash=$UP_HASH" >> $GITHUB_OUTPUT
+
+      - name: Check if branch exists in mirror
+        id: mirror
+        env:
+          TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
+        run: |
+          BRANCH=${{ github.event.inputs.branch_to_sync }}
+          GH_HASH=$(git ls-remote https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git refs/heads/$BRANCH | cut -f1)
+          echo "hash=$GH_HASH" >> $GITHUB_OUTPUT
+
+      - name: Print hashes
+        run: |
+          echo "Upstream hash: ${{ steps.upstream.outputs.hash }}"
+          echo "Mirror hash:   ${{ steps.mirror.outputs.hash }}"
+
+      - name: Clone and sync branch if needed
+        if: steps.upstream.outputs.hash != steps.mirror.outputs.hash
+        env:
+          TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
+        run: |
+          BRANCH=${{ github.event.inputs.branch_to_sync }}
+          git clone --single-branch --branch $BRANCH https://git.eden-emu.dev/eden-emu/eden eden-upstream
+          cd eden-upstream
+
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          git remote add mirror https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git
+          git push mirror $BRANCH --force

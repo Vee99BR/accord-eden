@@ -1,0 +1,42 @@
+name: 0. Sync "master" from "eden-emu.dev"
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '04 01 * * *'  # Runs daily at Kasane Teto time
+
+jobs:
+  sync-master:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get upstream commit hash
+        id: upstream
+        run: |
+          UP_HASH=$(git ls-remote https://git.eden-emu.dev/eden-emu/eden.git refs/heads/master | cut -f1)
+          echo "hash=$UP_HASH" >> $GITHUB_OUTPUT
+
+      - name: Get eden-mirror commit hash
+        id: mirror
+        env:
+          TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
+        run: |
+          GH_HASH=$(git ls-remote https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git refs/heads/master | cut -f1)
+          echo "hash=$GH_HASH" >> $GITHUB_OUTPUT
+
+      - name: Print hashes
+        run: |
+          echo "Upstream hash: ${{ steps.upstream.outputs.hash }}"
+          echo "Mirror hash:   ${{ steps.mirror.outputs.hash }}"
+
+      - name: Clone and push if different
+        if: steps.upstream.outputs.hash != steps.mirror.outputs.hash
+        env:
+          TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
+        run: |
+          git clone --single-branch --branch master https://git.eden-emu.dev/eden-emu/eden eden-upstream
+          cd eden-upstream
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git remote add mirror https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git
+          git push mirror master --force
