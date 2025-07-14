@@ -16,27 +16,47 @@ jobs:
           UP_HASH=$(git ls-remote https://git.eden-emu.dev/eden-emu/eden.git refs/heads/master | cut -f1)
           echo "hash=$UP_HASH" >> $GITHUB_OUTPUT
 
-      - name: Get eden-mirror commit hash
+      - name: Clone eden-mirror and get hashes
         id: mirror
         env:
           TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
         run: |
-          GH_HASH=$(git ls-remote https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git refs/heads/master | cut -f1)
-          echo "hash=$GH_HASH" >> $GITHUB_OUTPUT
+          git clone --depth=2 --branch master https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git mirror
+          cd mirror
+          CURR=$(git rev-parse HEAD)
+          PREV=$(git rev-parse HEAD^)
+          echo "current=$CURR" >> $GITHUB_OUTPUT
+          echo "previous=$PREV" >> $GITHUB_OUTPUT
 
       - name: Print hashes
         run: |
           echo "Upstream hash: ${{ steps.upstream.outputs.hash }}"
-          echo "Mirror hash:   ${{ steps.mirror.outputs.hash }}"
+          echo "Mirror hash:   ${{ steps.mirror.outputs.current }}"
+          echo "Mirror hash-1: ${{ steps.mirror.outputs.previous }}"
 
-      - name: Clone and push if different
-        if: steps.upstream.outputs.hash != steps.mirror.outputs.hash
+      - name: Sync and cherry-pick mirror commit
+        if: steps.mirror.outputs.current != steps.upstream.outputs.hash
         env:
           TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
+          CURR_COMMIT: ${{ steps.mirror.outputs.current }}
+          PREV_COMMIT: ${{ steps.mirror.outputs.previous }}
+          UPSTREAM_HASH: ${{ steps.upstream.outputs.hash }}
         run: |
           git clone --single-branch --branch master https://git.eden-emu.dev/eden-emu/eden eden-upstream
           cd eden-upstream
+
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
+
           git remote add mirror https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git
+
+          # Push upstream forcibly to mirror (this updates master branch)
           git push mirror master --force
+
+          if [ "$PREV_COMMIT" = "$UPSTREAM_HASH" ]; then
+            echo "Detected 1 extra local commit in mirror. Cherry-picking $CURR_COMMIT..."
+            git cherry-pick $CURR_COMMIT || echo "⚠️ Cherry-pick failed or already applied."
+            git push mirror master
+          else
+            echo "Mirror has more than 1 commit difference or unrelated history. No cherry-pick applied."
+          fi
