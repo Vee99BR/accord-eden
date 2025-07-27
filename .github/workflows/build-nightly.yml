@@ -10,7 +10,6 @@ jobs:
   windows:
     runs-on: windows-latest
     name: "Windows (${{ matrix.target }})"
-    continue-on-error: true
     strategy:
       matrix:
         include:
@@ -60,23 +59,31 @@ jobs:
           modules: qtmultimedia qt5compat
           cache: true
 
-      - name: Eden!
+      - name: Install Vulkan SDK
+        shell: pwsh
+        run: .\.ci\windows\install-vulkan-sdk.ps1
+
+      - name: Store Version on ENV and Set Qt env vars
         shell: bash
+        env:
+          QT_ARCH_VERSION: ${{ matrix.qt_arch_version }}
+          QT_ARCH_PATH: ${{ matrix.qt_arch_path }}
         run: |
-          # Store Version on ENV
-          echo "VERSION=$(git rev-list --count HEAD)" >> "${GITHUB_ENV}"
-          # Set Qt environment variables
-          export QTDIR="/c/Qt/${{ matrix.qt_arch_version }}/${{ matrix.qt_arch_path }}"
-          export QT_ROOT_DIR="$QTDIR"
-          export QT_PLUGIN_PATH="$QTDIR/plugins"
-          export QML2_IMPORT_PATH="$QTDIR/qml"
-          export PATH="$QTDIR/bin:$PATH"
-          # Install Vulkan SDK
-          pwsh -File .ci/windows/install-vulkan-sdk.ps1
-          # Build it!
-          DEVEL=true WINDEPLOYQT="$QTDIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH=$QTDIR/lib/cmake/Qt6
-          # Pack it!
-          ./.ci/windows/package.sh
+          QTDIR="/c/Qt/${QT_ARCH_VERSION}/${QT_ARCH_PATH}"
+          echo "VERSION=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+          echo "QTDIR=$QTDIR" >> "$GITHUB_ENV"
+          echo "QT_ROOT_DIR=$QTDIR" >> "$GITHUB_ENV"
+          echo "QT_PLUGIN_PATH=$QTDIR/plugins" >> "$GITHUB_ENV"
+          echo "QML2_IMPORT_PATH=$QTDIR/qml" >> "$GITHUB_ENV"
+          echo "PATH=$QTDIR/bin:$PATH" >> "$GITHUB_ENV"
+
+      - name: Build Eden!
+        shell: bash
+        run: DEVEL=true WINDEPLOYQT="$QTDIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH=$QTDIR/lib/cmake/Qt6
+
+      - name: Pack Eden!
+        shell: bash
+        run: ./.ci/windows/package.sh
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
