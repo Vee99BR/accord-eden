@@ -1,0 +1,87 @@
+name: Build Eden Nightly
+concurrency:
+  group: build-eden-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    name: "Windows (${{ matrix.target }})"
+    continue-on-error: true
+    strategy:
+      matrix:
+        include:
+           - target: x86_64
+    env:
+      TARGET: ${{ matrix.target }}
+      ARCH: x86_64
+      OS: windows
+      CCACHE_DIR: ${{ github.workspace }}/.cache/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up vcpkg cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/eden/build/vcpkg_installed
+            ${{ github.workspace }}/eden/build/externals
+            ${{ github.workspace }}/eden/.vcpkg
+          key: ${{ runner.os }}-${{ matrix.target }}-vcpkg-${{ hashFiles('**/CMakeLists.txt', '**/vcpkg.json') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-vcpkg-
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.target }}
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.9.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+          modules: qtmultimedia qt5compat
+          cache: true
+
+      - name: Eden!
+        shell: bash
+        run: |
+          # Clone it!
+          git clone 'https://github.com/Vee99BR/eden-mirror.git' ./eden
+          # Get inside Eden
+          cd ./eden
+          # Fetch SubModules
+          git submodule update --init --recursive
+          # Store Version on ENV
+          echo "VERSION=$(git rev-list --count HEAD)" >> "${GITHUB_ENV}"
+          # Set Qt environment variables
+          export QTDIR="/c/Qt/6.9.0/msvc2022_64"
+          export QT_ROOT_DIR="$QTDIR"
+          export QT_PLUGIN_PATH="$QTDIR/plugins"
+          export QML2_IMPORT_PATH="$QTDIR/qml"
+          export PATH="$QTDIR/bin:$PATH"
+          # Install Vulkan SDK
+          pwsh -File .ci/windows/install-vulkan-sdk.ps1
+          # Build it!
+          DEVEL=true WINDEPLOYQT="$QTDIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH=$QTDIR/lib/cmake/Qt6
+          # Pack it!
+          ./.ci/windows/package.sh
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}.zip
+          path: eden/artifacts/*
