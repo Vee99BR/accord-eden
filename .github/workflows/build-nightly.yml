@@ -15,6 +15,9 @@ jobs:
       matrix:
         include:
            - target: x86_64
+             qt_arch_target: win64_msvc2022_64
+             qt_arch_path: msvc2022_64
+             qt_arch_version: 6.9.0
     env:
       TARGET: ${{ matrix.target }}
       ARCH: x86_64
@@ -50,10 +53,10 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.9.0'
+          version: ${{ matrix.qt_arch_version }}
           host: 'windows'
           target: 'desktop'
-          arch: 'win64_msvc2022_64'
+          arch: ${{ matrix.qt_arch_target }}
           modules: qtmultimedia qt5compat
           cache: true
 
@@ -63,7 +66,7 @@ jobs:
           # Store Version on ENV
           echo "VERSION=$(git rev-list --count HEAD)" >> "${GITHUB_ENV}"
           # Set Qt environment variables
-          export QTDIR="/c/Qt/6.9.0/msvc2022_64"
+          export QTDIR="/c/Qt/${{ matrix.qt_arch_version }}/${{ matrix.qt_arch_path }}"
           export QT_ROOT_DIR="$QTDIR"
           export QT_PLUGIN_PATH="$QTDIR/plugins"
           export QML2_IMPORT_PATH="$QTDIR/qml"
