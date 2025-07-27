@@ -26,6 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          repository: Vee99BR/eden-mirror
           submodules: recursive
           fetch-depth: 0
           fetch-tags: true
@@ -34,9 +35,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ github.workspace }}/eden/build/vcpkg_installed
-            ${{ github.workspace }}/eden/build/externals
-            ${{ github.workspace }}/eden/.vcpkg
+            ${{ github.workspace }}/build/vcpkg_installed
+            ${{ github.workspace }}/build/externals
+            ${{ github.workspace }}/.vcpkg
           key: ${{ runner.os }}-${{ matrix.target }}-vcpkg-${{ hashFiles('**/CMakeLists.txt', '**/vcpkg.json') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.target }}-vcpkg-
@@ -59,12 +60,6 @@ jobs:
       - name: Eden!
         shell: bash
         run: |
-          # Clone it!
-          git clone 'https://github.com/Vee99BR/eden-mirror.git' ./eden
-          # Get inside Eden
-          cd ./eden
-          # Fetch SubModules
-          git submodule update --init --recursive
           # Store Version on ENV
           echo "VERSION=$(git rev-list --count HEAD)" >> "${GITHUB_ENV}"
           # Set Qt environment variables
@@ -83,5 +78,5 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}.zip
-          path: eden/artifacts/*
+          name: eden-windows-${{ matrix.target }}.zip
+          path: artifacts/*
