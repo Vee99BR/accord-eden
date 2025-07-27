@@ -10,36 +10,39 @@ jobs:
   windows:
     runs-on: windows-latest
     name: "Windows (${{ matrix.target }})"
-    continue-on-error: true
     strategy:
       matrix:
         include:
            - target: x86_64
+             qt_arch_target: win64_msvc2022_64
+             qt_arch_version: 6.10.0
     env:
       TARGET: ${{ matrix.target }}
-      ARCH: x86_64
+      ARCH: ${{ matrix.target }}
       OS: windows
-      CCACHE_DIR: ${{ github.workspace }}/.cache/.ccache
-      CCACHE_COMPILERCHECK: content
-      CCACHE_SLOPPINESS: time_macros
+      SCCACHE_GHA_ENABLED: "true"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Clone eden-mirror
+        uses: actions/checkout@v4
         with:
+          repository: Vee99BR/eden-mirror
           submodules: recursive
           fetch-depth: 0
-          fetch-tags: true
 
-      - name: Set up vcpkg cache
-        uses: actions/cache@v4
+      - name: Restore vcpkg cache
+        uses: actions/cache/restore@v4
+        id: vcpkg-cache
         with:
           path: |
-            ${{ github.workspace }}/eden/build/vcpkg_installed
-            ${{ github.workspace }}/eden/build/externals
-            ${{ github.workspace }}/eden/.vcpkg
-          key: ${{ runner.os }}-${{ matrix.target }}-vcpkg-${{ hashFiles('**/CMakeLists.txt', '**/vcpkg.json') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.target }}-vcpkg-
+            ${{ github.workspace }}/build/vcpkg_installed
+            ${{ github.workspace }}/build/externals
+            ${{ github.workspace }}/.vcpkg
+          key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
+          restore-keys: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -49,39 +52,50 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.9.0'
+          version: ${{ matrix.qt_arch_version }}
           host: 'windows'
           target: 'desktop'
-          arch: 'win64_msvc2022_64'
+          arch: ${{ matrix.qt_arch_target }}
           modules: qtmultimedia qt5compat
           cache: true
+          add-tools-to-path: true
 
-      - name: Eden!
-        shell: bash
+      - name: Install Vulkan SDK
+        shell: pwsh
         run: |
-          # Clone it!
-          git clone 'https://github.com/Vee99BR/eden-mirror.git' ./eden
-          # Get inside Eden
-          cd ./eden
-          # Fetch SubModules
-          git submodule update --init --recursive
-          # Store Version on ENV
-          echo "VERSION=$(git rev-list --count HEAD)" >> "${GITHUB_ENV}"
-          # Set Qt environment variables
-          export QTDIR="/c/Qt/6.9.0/msvc2022_64"
-          export QT_ROOT_DIR="$QTDIR"
-          export QT_PLUGIN_PATH="$QTDIR/plugins"
-          export QML2_IMPORT_PATH="$QTDIR/qml"
-          export PATH="$QTDIR/bin:$PATH"
-          # Install Vulkan SDK
-          pwsh -File .ci/windows/install-vulkan-sdk.ps1
-          # Build it!
-          DEVEL=true WINDEPLOYQT="$QTDIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH=$QTDIR/lib/cmake/Qt6
-          # Pack it!
-          ./.ci/windows/package.sh
+          sed -i -E 's#^\$ExeFile = ".*"#\$ExeFile = "vulkansdk-windows-X64-\$VulkanSDKVer.exe"#' .ci/windows/install-vulkan-sdk.ps1
+          .\.ci\windows\install-vulkan-sdk.ps1
+
+        # Replace /Zi (generate debug info in .pdb) with /Z7 (embed debug info in .obj)
+        # This avoids the issue where multiple CL.EXE processes try to write to the same .pdb file,
+        # which causes error C1041 when using sccache with MSVC in parallel builds
+        #
+        # This is a workaround for known sccache limitations on Windows with MSVC
+      - name: Fix MSVC PDB conflict for sccache
+        shell: bash
+        run: sed -i 's|^ninja$|find ../ -name CMakeLists.txt -exec sed -i "s#/Zi#/Z7#g" {} +; ninja|' .ci/windows/build.sh
+
+      - name: Build Eden!
+        shell: bash
+        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DDYNARMIC_TESTS=OFF -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+
+      - name: Pack Eden!
+        shell: bash
+        run: ./.ci/windows/package.sh
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}.zip
-          path: eden/artifacts/*
+          name: eden-windows-${{ matrix.target }}.zip
+          path: artifacts/*
+
+      # See <https://github.com/actions/cache/commit/c74ca4022c9c3055a63985d9a25f9a7cc1ffc5d2>
+      - name: Always Save vcpkg Cache
+        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            ${{ github.workspace }}/build/vcpkg_installed
+            ${{ github.workspace }}/build/externals
+            ${{ github.workspace }}/.vcpkg
