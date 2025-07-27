@@ -61,7 +61,9 @@ jobs:
 
       - name: Install Vulkan SDK
         shell: pwsh
-        run: .\.ci\windows\install-vulkan-sdk.ps1
+        run: |
+          sed -i -E 's#^\$ExeFile = ".*"#\$ExeFile = "vulkansdk-windows-X64-\$VulkanSDKVer.exe"#' .ci/windows/install-vulkan-sdk.ps1
+          .\.ci\windows\install-vulkan-sdk.ps1
 
       - name: Store Version on ENV and Set Qt env vars
         shell: bash
