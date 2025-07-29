@@ -99,3 +99,23 @@ jobs:
         with:
           name: eden-windows-${{ matrix.target }}.zip
           path: artifacts/*
+
+      # See <https://github.com/actions/cache/commit/c74ca4022c9c3055a63985d9a25f9a7cc1ffc5d2>
+      - name: Always() Save vcpkg Cache
+        id: vcpkg-cache-save
+        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
+          path: |
+            ${{ github.workspace }}/build/vcpkg_installed
+            ${{ github.workspace }}/build/externals
+            ${{ github.workspace }}/.vcpkg
+
+      - name: Always() Save ccache Cache
+        id: ccache-cache-save
+        if: always() && steps.ccache-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.ccache-cache.outputs.cache-primary-key }}
+          path: ${{ env.CCACHE_DIR }}
