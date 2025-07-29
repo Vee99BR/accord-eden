@@ -32,7 +32,7 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Set up vcpkg cache
+      - name: Restore vcpkg cache
         uses: actions/cache/restore@v4
         id: vcpkg-cache
         with:
@@ -41,16 +41,16 @@ jobs:
             ${{ github.workspace }}/build/externals
             ${{ github.workspace }}/vcpkg_installed
             ${{ github.workspace }}/.vcpkg
-          key: ${{ runner.os }}-${{ matrix.target }}-vcpkg-${{ hashFiles('**/CMakeLists.txt', '**/vcpkg.json') }}-${{ github.run_id }}
-          restore-keys: ${{ runner.os }}-${{ matrix.target }}-vcpkg-
+          key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
+          restore-keys: cache-vcpkg-
 
-      - name: Set up ccache cache
+      - name: Restore ccache cache
         uses: actions/cache/restore@v4
         id: ccache-cache
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ runner.os }}-${{ matrix.target }}-ccache-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.target }}-ccache-
+          key: cache-ccache-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
+          restore-keys: cache-ccache-
 
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -89,7 +89,7 @@ jobs:
           path: artifacts/*
 
       # See <https://github.com/actions/cache/commit/c74ca4022c9c3055a63985d9a25f9a7cc1ffc5d2>
-      - name: Always() Save vcpkg Cache
+      - name: Always Save vcpkg Cache
         id: vcpkg-cache-save
         if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -100,7 +100,7 @@ jobs:
             ${{ github.workspace }}/build/externals
             ${{ github.workspace }}/.vcpkg
 
-      - name: Always() Save ccache Cache
+      - name: Always Save ccache Cache
         id: ccache-cache-save
         if: always() && steps.ccache-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
