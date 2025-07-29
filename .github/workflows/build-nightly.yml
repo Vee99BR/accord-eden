@@ -32,6 +32,9 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Set CCACHE_DIR
+        run: echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
+
       - name: Restore vcpkg cache
         uses: actions/cache/restore@v4
         id: vcpkg-cache
