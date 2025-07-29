@@ -15,7 +15,6 @@ jobs:
         include:
            - target: x86_64
              qt_arch_target: win64_msvc2022_64
-             qt_arch_path: msvc2022_64
              qt_arch_version: 6.9.0
     env:
       TARGET: ${{ matrix.target }}
@@ -77,15 +76,15 @@ jobs:
         shell: bash
         env:
           QT_ARCH_VERSION: ${{ matrix.qt_arch_version }}
-          QT_ARCH_PATH: ${{ matrix.qt_arch_path }}
+          QT_ARCH_TARGET: ${{ matrix.qt_arch_target }}
         run: |
-          QTDIR="/c/Qt/${QT_ARCH_VERSION}/${QT_ARCH_PATH}"
+          # Following <https://github.com/jurplel/install-qt-action?tab=readme-ov-file#dir>
           echo "VERSION=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
-          echo "QTDIR=$QTDIR" >> "$GITHUB_ENV"
-          echo "QT_ROOT_DIR=$QTDIR" >> "$GITHUB_ENV"
-          echo "QT_PLUGIN_PATH=$QTDIR/plugins" >> "$GITHUB_ENV"
-          echo "QML2_IMPORT_PATH=$QTDIR/qml" >> "$GITHUB_ENV"
-          echo "PATH=$QTDIR/bin:$PATH" >> "$GITHUB_ENV"
+          echo "QTDIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          echo "QT_ROOT_DIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          echo "QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins" >> "$GITHUB_ENV"
+          echo "QML2_IMPORT_PATH=$QT_ROOT_DIR/qml" >> "$GITHUB_ENV"
+          echo "PATH=$QT_ROOT_DIR/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Build Eden!
         shell: bash
