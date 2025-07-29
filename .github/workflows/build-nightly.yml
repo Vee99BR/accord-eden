@@ -20,7 +20,7 @@ jobs:
       TARGET: ${{ matrix.target }}
       ARCH: x86_64
       OS: windows
-      CCACHE_DIR: ${{ github.workspace }}/.cache/.ccache
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_COMPILERCHECK: content
       CCACHE_SLOPPINESS: time_macros
 
@@ -65,26 +65,13 @@ jobs:
           arch: ${{ matrix.qt_arch_target }}
           modules: qtmultimedia qt5compat
           cache: true
+          add-tools-to-path: true
 
       - name: Install Vulkan SDK
         shell: pwsh
         run: |
           sed -i -E 's#^\$ExeFile = ".*"#\$ExeFile = "vulkansdk-windows-X64-\$VulkanSDKVer.exe"#' .ci/windows/install-vulkan-sdk.ps1
           .\.ci\windows\install-vulkan-sdk.ps1
-
-      - name: Store Version on ENV and Set Qt env vars
-        shell: bash
-        env:
-          QT_ARCH_VERSION: ${{ matrix.qt_arch_version }}
-          QT_ARCH_TARGET: ${{ matrix.qt_arch_target }}
-        run: |
-          # Following <https://github.com/jurplel/install-qt-action?tab=readme-ov-file#dir>
-          echo "VERSION=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
-          echo "QTDIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
-          echo "QT_ROOT_DIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
-          echo "QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins" >> "$GITHUB_ENV"
-          echo "QML2_IMPORT_PATH=$QT_ROOT_DIR/qml" >> "$GITHUB_ENV"
-          echo "PATH=$QT_ROOT_DIR/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Build Eden!
         shell: bash
