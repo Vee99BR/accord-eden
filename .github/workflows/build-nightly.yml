@@ -33,6 +33,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set CCACHE_DIR
+        shell: bash
         run: echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
 
       - name: Restore vcpkg cache
