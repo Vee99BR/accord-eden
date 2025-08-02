@@ -20,7 +20,7 @@ jobs:
       TARGET: ${{ matrix.target }}
       ARCH: ${{ matrix.target }}
       OS: windows
-      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_DIR: ${{ github.workspace }}\.ccache
       CCACHE_COMPILERCHECK: content
       CCACHE_SLOPPINESS: time_macros
 
@@ -33,7 +33,6 @@ jobs:
           fetch-depth: 0
 
       - name: Set CCACHE_DIR
-        shell: bash
         run: echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
 
       - name: Restore vcpkg cache
@@ -41,10 +40,10 @@ jobs:
         id: vcpkg-cache
         with:
           path: |
-            ${{ github.workspace }}/build/vcpkg_installed
-            ${{ github.workspace }}/build/externals
-            ${{ github.workspace }}/vcpkg_installed
-            ${{ github.workspace }}/.vcpkg
+            ${{ github.workspace }}\build\vcpkg_installed
+            ${{ github.workspace }}\build\externals
+            ${{ github.workspace }}\vcpkg_installed
+            ${{ github.workspace }}\.vcpkg
           key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
           restore-keys: cache-vcpkg-
 
