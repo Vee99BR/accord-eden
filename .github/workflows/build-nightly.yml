@@ -20,7 +20,7 @@ jobs:
       TARGET: ${{ matrix.target }}
       ARCH: ${{ matrix.target }}
       OS: windows
-      CCACHE_DIR: ${{ github.workspace }}\.ccache
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_COMPILERCHECK: content
       CCACHE_SLOPPINESS: time_macros
 
@@ -32,28 +32,22 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Set CCACHE_DIR
-        run: echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
-
       - name: Restore vcpkg cache
         uses: actions/cache/restore@v4
         id: vcpkg-cache
         with:
           path: |
-            ${{ github.workspace }}\build\vcpkg_installed
-            ${{ github.workspace }}\build\externals
-            ${{ github.workspace }}\vcpkg_installed
-            ${{ github.workspace }}\.vcpkg
-          key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
-          restore-keys: cache-vcpkg-
+            ${{ github.workspace }}/build/vcpkg_installed
+            ${{ github.workspace }}/build/externals
+            ${{ github.workspace }}/.vcpkg
+          restore-keys: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Restore ccache cache
         uses: actions/cache/restore@v4
         id: ccache-cache
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: cache-ccache-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
-          restore-keys: cache-ccache-
+          restore-keys: cache-ccache-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -97,7 +91,7 @@ jobs:
         if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
+          key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
           path: |
             ${{ github.workspace }}/build/vcpkg_installed
             ${{ github.workspace }}/build/externals
@@ -108,5 +102,5 @@ jobs:
         if: always() && steps.ccache-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          key: ${{ steps.ccache-cache.outputs.cache-primary-key }}
+          key: cache-ccache-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
           path: ${{ env.CCACHE_DIR }}
