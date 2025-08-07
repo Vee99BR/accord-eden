@@ -21,6 +21,7 @@ jobs:
       ARCH: ${{ matrix.target }}
       OS: windows
       SCCACHE_GHA_ENABLED: "true"
+      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
 
     steps:
       - name: Clone eden-mirror
@@ -34,10 +35,7 @@ jobs:
         uses: actions/cache/restore@v4
         id: vcpkg-cache
         with:
-          path: |
-            ${{ github.workspace }}/build/vcpkg_installed
-            ${{ github.workspace }}/build/externals
-            ${{ github.workspace }}/.vcpkg
+          path: ${{ github.workspace }}/vcpkg_cache
           key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
           restore-keys: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-
 
@@ -95,7 +93,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
-          path: |
-            ${{ github.workspace }}/build/vcpkg_installed
-            ${{ github.workspace }}/build/externals
-            ${{ github.workspace }}/.vcpkg
+          path: ${{ github.workspace }}/vcpkg_cache
