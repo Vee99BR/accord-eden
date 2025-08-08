@@ -1,4 +1,4 @@
-name: Sync "Branch" from "eden-emu.dev"
+name: "Manual Branch Re[c]ord"
 
 on:
   workflow_dispatch:

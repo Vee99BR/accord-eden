@@ -1,4 +1,4 @@
-name: Build Eden Nightly
+name: "[B]uild a Mirror of Eden"
 concurrency:
   group: build-eden-${{ github.ref }}
   cancel-in-progress: true

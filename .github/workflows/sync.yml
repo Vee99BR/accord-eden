@@ -1,4 +1,4 @@
-name: 0. Sync "master" from "eden-emu.dev"
+name: "[A]utomatic Accord Synchronization"
 
 on:
   workflow_dispatch:
