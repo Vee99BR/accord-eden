@@ -21,7 +21,6 @@ jobs:
       ARCH: ${{ matrix.target }}
       OS: windows
       SCCACHE_GHA_ENABLED: "true"
-      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
 
     steps:
       - name: Clone eden-mirror
@@ -30,14 +29,6 @@ jobs:
           repository: Vee99BR/eden-mirror
           submodules: recursive
           fetch-depth: 0
-
-      - name: Restore vcpkg cache
-        uses: actions/cache/restore@v4
-        id: vcpkg-cache
-        with:
-          path: ${{ github.workspace }}/vcpkg_cache
-          key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
-          restore-keys: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
@@ -64,18 +55,9 @@ jobs:
           sed -i -E 's#^\$ExeFile = ".*"#\$ExeFile = "vulkansdk-windows-X64-\$VulkanSDKVer.exe"#' .ci/windows/install-vulkan-sdk.ps1
           .\.ci\windows\install-vulkan-sdk.ps1
 
-        # Replace /Zi (generate debug info in .pdb) with /Z7 (embed debug info in .obj)
-        # This avoids the issue where multiple CL.EXE processes try to write to the same .pdb file,
-        # which causes error C1041 when using sccache with MSVC in parallel builds
-        #
-        # This is a workaround for known sccache limitations on Windows with MSVC
-      - name: Fix MSVC PDB conflict for sccache
-        shell: bash
-        run: sed -i 's|^ninja$|find ../ -name CMakeLists.txt -exec sed -i "s#/Zi#/Z7#g" {} +; ninja|' .ci/windows/build.sh
-
       - name: Build Eden!
         shell: bash
-        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DDYNARMIC_TESTS=OFF -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
 
       - name: Pack Eden!
         shell: bash
@@ -86,11 +68,3 @@ jobs:
         with:
           name: eden-windows-${{ matrix.target }}.zip
           path: artifacts/*
-
-      # See <https://github.com/actions/cache/commit/c74ca4022c9c3055a63985d9a25f9a7cc1ffc5d2>
-      - name: Always Save vcpkg Cache
-        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          key: cache-vcpkg-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}
-          path: ${{ github.workspace }}/vcpkg_cache
