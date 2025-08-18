@@ -6,52 +6,94 @@ on:
       branch_to_sync:
         description: 'Branch to sync from upstream'
         required: true
+      clone_method:
+        description: 'Choose clone method: "copy" branch (default) OR direct "merge" branch on master'
+        required: true
+        default: copy
+        type: choice
+        options:
+          - copy
+          - merge
 
 jobs:
   sync-branch:
     runs-on: ubuntu-latest
 
     steps:
+      # Define repo URLs
       - name: Set variables
         id: vars
-        run: echo "BRANCH=${{ github.event.inputs.branch_to_sync }}" >> $GITHUB_OUTPUT
+        env:
+          TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
+        run: |
+          echo "BRANCH=${{ github.event.inputs.branch_to_sync }}" >> $GITHUB_OUTPUT
+          echo "CLONE_METHOD=${{ github.event.inputs.clone_method }}" >> $GITHUB_OUTPUT
+          echo "MIRROR_URL=github.com/Vee99BR/eden-mirror.git" >> $GITHUB_OUTPUT
+          echo "UPSTREAM_URL=https://git.eden-emu.dev/eden-emu/eden.git" >> $GITHUB_OUTPUT
+          echo "TOKEN=${TOKEN}" >> $GITHUB_OUTPUT
 
+      # Check if branch exists in upstream
       - name: Check if branch exists in upstream
         id: upstream
         run: |
           BRANCH=${{ steps.vars.outputs.BRANCH }}
-          UP_HASH=$(git ls-remote https://git.eden-emu.dev/eden-emu/eden.git refs/heads/$BRANCH | cut -f1)
-          if [ -z "$UP_HASH" ]; then
-            echo "❌ Branch '$BRANCH' does not exist in upstream."
+          UPSTREAM_URL=${{ steps.vars.outputs.UPSTREAM_URL }}
+          UP_HASH=$(git ls-remote "${UPSTREAM_URL}" "refs/heads/${BRANCH}" | cut -f1)
+          if [ -z "${UP_HASH}" ]; then
+            echo "❌ Branch '${BRANCH}' does not exist in upstream."
             exit 1
           fi
-          echo "hash=$UP_HASH" >> $GITHUB_OUTPUT
+          echo "hash=${UP_HASH}" >> $GITHUB_OUTPUT
 
+      # Check if branch exists in mirror
       - name: Check if branch exists in mirror
         id: mirror
-        env:
-          TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
         run: |
-          BRANCH=${{ github.event.inputs.branch_to_sync }}
-          GH_HASH=$(git ls-remote https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git refs/heads/$BRANCH | cut -f1)
-          echo "hash=$GH_HASH" >> $GITHUB_OUTPUT
+          BRANCH=${{ steps.vars.outputs.BRANCH }}
+          MIRROR_URL=${{ steps.vars.outputs.MIRROR_URL }}
+          TOKEN=${{ steps.vars.outputs.TOKEN }}
+          GH_HASH=$(git ls-remote "https://x-access-token:${TOKEN}@${MIRROR_URL}" "refs/heads/${BRANCH}" | cut -f1)
+          echo "hash=${GH_HASH}" >> $GITHUB_OUTPUT
 
+      # Print hashes
       - name: Print hashes
         run: |
           echo "Upstream hash: ${{ steps.upstream.outputs.hash }}"
           echo "Mirror hash:   ${{ steps.mirror.outputs.hash }}"
 
-      - name: Clone and sync branch if needed
-        if: steps.upstream.outputs.hash != steps.mirror.outputs.hash
-        env:
-          TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
+      - name: Sync or merge branch
         run: |
-          BRANCH=${{ github.event.inputs.branch_to_sync }}
-          git clone --single-branch --branch $BRANCH https://git.eden-emu.dev/eden-emu/eden eden-upstream
-          cd eden-upstream
-
+          BRANCH=${{ steps.vars.outputs.BRANCH }}
+          METHOD=${{ steps.vars.outputs.CLONE_METHOD }}
+          MIRROR_URL=${{ steps.vars.outputs.MIRROR_URL }}
+          UPSTREAM_URL=${{ steps.vars.outputs.UPSTREAM_URL }}
+          TOKEN=${{ steps.vars.outputs.TOKEN }}
+      
+          # Clone the mirror repo (authenticated)
+          git clone "https://x-access-token:${TOKEN}@${MIRROR_URL}" eden-mirror
+          cd eden-mirror
+      
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-
-          git remote add mirror https://x-access-token:${TOKEN}@github.com/Vee99BR/eden-mirror.git
-          git push mirror $BRANCH --force
+      
+          if [ "${METHOD}" = "copy" ]; then
+            # Copy branch (force push)
+            git fetch "${UPSTREAM_URL}" "${BRANCH}"
+            git checkout -B "${BRANCH}" FETCH_HEAD
+            git remote add mirror "https://x-access-token:${TOKEN}@${MIRROR_URL}"
+            git push mirror "${BRANCH}" --force
+      
+          elif [ "${METHOD}" = "merge" ]; then
+            # Merge commits into master via cherry-pick
+            git checkout master
+            git remote add upstream "${UPSTREAM_URL}"
+            git fetch upstream "${BRANCH}"
+      
+            COMMITS=$(git log master..upstream/"${BRANCH}" --reverse --format="%H")
+            for C in ${COMMITS}; do
+              echo "Cherry-picking commit ${C}..."
+              git cherry-pick "${C}" || { echo "❌ Conflict occurred on commit ${C}"; exit 1; }
+            done
+      
+            git push "https://x-access-token:${TOKEN}@${MIRROR_URL}" master
+          fi
