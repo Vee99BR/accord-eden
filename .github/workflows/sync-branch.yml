@@ -33,8 +33,13 @@ jobs:
           BRANCH_INPUT="${{ github.event.inputs.branch_to_sync || '' }}"
           METHOD_INPUT="${{ github.event.inputs.clone_method || 'reset' }}"
 
-          # ❗ Fail if branch input is empty and method is not reset
-          if [ -z "$BRANCH_INPUT" ] && [ "$METHOD_INPUT" != "reset" ]; then
+          if [ "$METHOD_INPUT" = "reset" ]; then
+            # Always reset only master, ignore branch_to_sync
+            echo "⚠️ Resetting eden-mirror master to upstream master"
+            BRANCH_INPUT="master"
+            METHOD_INPUT="copy"
+          elif [ -z "$BRANCH_INPUT" ]; then
+            # Fail if copy or merge is selected without branch input
             echo "❌ branch_to_sync is required for methods 'copy' or 'merge'"
             exit 1
           fi
@@ -151,13 +156,6 @@ jobs:
                 git cherry-pick "${C}" || { echo "❌ Conflict on commit ${C} from ${BRANCH}"; exit 1; }
               done
 
-            elif [ "${METHOD}" = "reset" ]; then
-              # Reset mode: forcibly set branch to upstream master
-              echo "⚠️ Resetting branch '${BRANCH}' to upstream master"
-              git fetch "${REPO_URL}" master
-              git checkout -B "${BRANCH}" FETCH_HEAD
-              git remote add mirror "https://x-access-token:${TOKEN}@${MIRROR_URL}" || true
-              git push mirror "${BRANCH}" --force
             fi
           done
 
