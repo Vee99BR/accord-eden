@@ -39,12 +39,8 @@ jobs:
       - name: Cherry-pick fixes
         shell: bash
         run: |
-          # package.sh: Improve package.sh using temp dir
-          git cherry-pick 8a5274a428220c4878755fdb42d6b9551d3a86a8
-          # externals: sirit: Fix usage of USE_CCACHE
-          git cherry-pick 4b3ddf7b2f4833e9d310acf83297052108645f24
-          # .ci: install-vulkan-sdk.ps1: Fix versioning after 1.4.313.0
-          git cherry-pick cb7639952f7feb78161e514e5b26b71298f95460
+          # Win32: CMakeLists.txt: Support ccache more openly
+          git cherry-pick 8d5eed38feb03e87b869ab6de5aed0507253261c
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
