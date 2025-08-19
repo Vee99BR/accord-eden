@@ -1,19 +1,22 @@
-name: "Manual Branch Re[c]ord"
+name: "Accord [B]ranch Central Management"
 
 on:
   workflow_dispatch:
     inputs:
-      branch_to_sync:
-        description: 'Branch (or branches, comma-separated). Format: branch OR namespace/repo:branch'
-        required: true
       clone_method:
-        description: 'Choose clone method: "copy" branch (default) OR direct "merge" branch on master'
+        description: 'Choose clone method: "copy", "merge" or "reset"'
         required: true
-        default: copy
+        default: reset
         type: choice
         options:
           - copy
           - merge
+          - reset
+      branch_to_sync:
+        description: 'Branch (or branches, comma-separated). Format: branch OR namespace/repo:branch'
+        required: false
+  schedule:
+    - cron: '04 01 * * *'  # Runs daily at 01:04
 
 jobs:
   sync-branch:
@@ -26,8 +29,18 @@ jobs:
         env:
           TOKEN: ${{ secrets.EDEN_MIRROR_TOKEN }}
         run: |
-          echo "BRANCHES=${{ github.event.inputs.branch_to_sync }}" >> $GITHUB_OUTPUT
-          echo "CLONE_METHOD=${{ github.event.inputs.clone_method }}" >> $GITHUB_OUTPUT
+          # Default branch and method for scheduled run
+          BRANCH_INPUT="${{ github.event.inputs.branch_to_sync || '' }}"
+          METHOD_INPUT="${{ github.event.inputs.clone_method || 'reset' }}"
+
+          # ❗ Fail if branch input is empty and method is not reset
+          if [ -z "$BRANCH_INPUT" ] && [ "$METHOD_INPUT" != "reset" ]; then
+            echo "❌ branch_to_sync is required for methods 'copy' or 'merge'"
+            exit 1
+          fi
+
+          echo "BRANCHES=$BRANCH_INPUT" >> $GITHUB_OUTPUT
+          echo "CLONE_METHOD=$METHOD_INPUT" >> $GITHUB_OUTPUT
           echo "MIRROR_URL=github.com/Vee99BR/eden-mirror.git" >> $GITHUB_OUTPUT
           echo "DEFAULT_UPSTREAM=https://git.eden-emu.dev/eden-emu/eden.git" >> $GITHUB_OUTPUT
           echo "TOKEN=${TOKEN}" >> $GITHUB_OUTPUT
@@ -86,8 +99,8 @@ jobs:
             echo "${BRANCH}=${GH_HASH}" >> $GITHUB_OUTPUT
           done
 
-      # Sync or merge branches depending on selected method
-      - name: Sync or merge branch
+      # Sync, merge or reset branches depending on selected method
+      - name: Sync, merge or reset branch
         run: |
           BRANCHES=${{ steps.vars.outputs.BRANCHES }}
           METHOD=${{ steps.vars.outputs.CLONE_METHOD }}
@@ -137,6 +150,14 @@ jobs:
                 echo "Cherry-picking commit ${C} from branch ${BRANCH}..."
                 git cherry-pick "${C}" || { echo "❌ Conflict on commit ${C} from ${BRANCH}"; exit 1; }
               done
+
+            elif [ "${METHOD}" = "reset" ]; then
+              # Reset mode: forcibly set branch to upstream master
+              echo "⚠️ Resetting branch '${BRANCH}' to upstream master"
+              git fetch "${REPO_URL}" master
+              git checkout -B "${BRANCH}" FETCH_HEAD
+              git remote add mirror "https://x-access-token:${TOKEN}@${MIRROR_URL}" || true
+              git push mirror "${BRANCH}" --force
             fi
           done
 

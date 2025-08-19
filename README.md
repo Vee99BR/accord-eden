@@ -1,47 +1,40 @@
 # Accord: Eden
 
-This repository contains automation scripts that serve three main purposes:
+This repository contains automation scripts that serve two main purposes:
 
-1. **[A]utomatic Accord Synchronization**
-   Keeps the `master` branch of the upstream [`Eden`](https://git.eden-emu.dev/eden-emu/eden) repository mirrored to [`eden-mirror`](https://github.com/Vee99BR/eden-mirror) daily at KTT (Kasane Teto Time) via GitHub Actions.
+1. **[A]ccord Branch Central Management**
+   Allows managing branches in the mirror repository (`eden-mirror`) manually or automatically.
+   You can choose a method for syncing branches:
+   - `copy` — forcibly overwrite the branch in the mirror with the upstream branch.
+   - `merge` — replay commits from the upstream branch onto `master` in the mirror.
+   - `reset` — forcibly reset the `master` branch in the mirror to the upstream `master` branch.
 
-2. **Manual Branch Re[c]ord**
-   Allows manually mirroring other branches from the upstream.
+   **Notes:**
+   - The `master` branch is synced automatically daily at KTT (Kasane Teto Time, or 01:04 UTC).
+   - `branch_to_sync` is required for `copy` or `merge`.
+   - The mirror repository is isolated and up-to-date, independent from the upstream infrastructure.
 
-3. **[B]uild a Mirror of Eden**
-   Standalone Github Action Script to build a binary based on `eden-mirror` for testing purposes.
-   **Currently supported only on Windows.**
-
-The `eden-mirror` repository offers an isolated and up-to-date source tree, independent from the upstream infrastructure.
+2. **[B]uild a Mirror of Eden**
+   Standalone GitHub Action script to build a binary from the `eden-mirror` repository.
+   **Currently supported build environment: Windows.**
 
 ---
 
 ## Create a Personal Access Token (PAT)
 
-Since `accord-eden` needs to push to another repository (`eden-mirror`), the default `GITHUB_TOKEN` does **not** have cross-repository permissions. You need to create a **Fine-grained Personal Access Token** with the appropriate permissions:
+Since these workflows need to push to another repository (`eden-mirror`), the default `GITHUB_TOKEN` does **not** have cross-repository permissions. You need to create a **Fine-grained Personal Access Token**:
 
 1. Go to: [https://github.com/settings/tokens](https://github.com/settings/tokens)
-
 2. Click **Generate new token** → **Fine-grained, repo-scoped**.
-
-3. Choose a **Token name**.
-
-4. Select the **Resource owner** (your user or organization).
-
-5. Set an expiration date (recommended).
-
-6. Under **Repository access**, select **Only select repositories**.
-
-7. Select the repository `{OWNER}/eden-mirror` to grant access.
-
-8. Set the following **Repository permissions**:
+3. Choose a **Token name** and **Resource owner**.
+4. Set an expiration date (recommended).
+5. Under **Repository access**, select **Only select repositories**.
+6. Select `{OWNER}/eden-mirror`.
+7. Set permissions:
     - **Contents**: `Read and write`
     - **Workflows**: `Read and write`
-
-9. Generate the token and copy it.
-
-10. Save the token as a secret named `EDEN_MIRROR_TOKEN` in the `accord-eden` repository:
-
+8. Generate the token and copy it.
+9. Save the token as a secret named `EDEN_MIRROR_TOKEN` in the `accord-eden` repository:
     - Go to:
       `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
 
@@ -49,21 +42,21 @@ Since `accord-eden` needs to push to another repository (`eden-mirror`), the def
 
 ## Usage
 
-### [A]utomatic Accord Synchronization
+### [A]ccord Branch Central Management
 
 - The `master` branch of the upstream Eden repository is mirrored to `eden-mirror` once per day at KTT (Kasane Teto Time, or 01:04 UTC).
 - This process is handled by GitHub Actions in the `accord-eden` repository.
 - The sync can also be triggered manually via the Actions tab.
-
-### Manual Branch Re[c]ord
-
-- Use it to mirror other branches from upstream as needed.
+  - `copy` — overwrite a specific branch in the mirror.
+  - `merge` — replay commits from a branch onto `master`.
+  - `reset` — reset the mirror `master` to upstream `master`.
+- Specify `branch_to_sync` for `copy` or `merge`.
 
 ### [B]uild a Mirror of Eden
 
-- Use the `eden-mirror` repository for building Eden manually.
-- **Currently supported build environment: Windows**.
+- Build Eden binaries from the `eden-mirror` repository.
+- Supported environment: Windows.
 
 ---
 
-If you have any questions or would like to contribute, feel free to open an issue or pull request.
+If you have any questions or want to contribute, feel free to open an issue or pull request.
