@@ -8,7 +8,7 @@ on:
 
 jobs:
   windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     name: "Windows (${{ matrix.target }})"
     strategy:
       matrix:
@@ -78,3 +78,53 @@ jobs:
         with:
           name: eden-windows-${{ matrix.target }}.zip
           path: artifacts/*
+
+  linux:
+    runs-on: ubuntu-24.04
+    name: "Ubuntu (${{ matrix.target }})"
+    strategy:
+      matrix:
+        include:
+           - target: amd64
+    env:
+      TARGET: ${{ matrix.target }}
+      ARCH: ${{ matrix.target }}
+      OS: linux
+      SCCACHE_GHA_ENABLED: "true"
+
+    steps:
+      - name: Clone eden-mirror
+        uses: actions/checkout@v4
+        with:
+          repository: Vee99BR/eden-mirror
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Configure Git identity
+        shell: bash
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Cherry-pick fixes
+        shell: bash
+        run: |
+          # Win32: CMakeLists.txt: Support ccache more openly
+          git cherry-pick 8d5eed38feb03e87b869ab6de5aed0507253261c
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Build Eden!
+        shell: bash
+        run: TARGET=appimage .ci/linux/build.sh -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+
+      - name: Pack Eden!
+        shell: bash
+        run: DEVEL=true ./.ci/linux/package.sh
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eden-linux-${{ matrix.target }}.zip
+          path: ./*.AppImage
