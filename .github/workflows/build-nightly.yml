@@ -115,6 +115,12 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - name: Install dependencies with cache
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: autoconf cmake g++ gcc git glslang-tools libasound2 libboost-context-dev libglu1-mesa-dev libhidapi-dev libpulse-dev libtool libudev-dev libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxext-dev libxkbcommon-x11-0 mesa-common-dev nasm ninja-build qt6-base-private-dev libmbedtls-dev catch2 libfmt-dev liblz4-dev nlohmann-json3-dev libzstd-dev libssl-dev libavfilter-dev libavcodec-dev libswscale-dev pkg-config zlib1g-dev
+          version: 1.0
+
       - name: Build Eden!
         shell: bash
         run: TARGET=appimage .ci/linux/build.sh ${{ matrix.target }} -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
