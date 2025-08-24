@@ -14,12 +14,13 @@ jobs:
       matrix:
         include:
            - target: x86_64
+             os: windows
              qt_arch_target: win64_msvc2022_64
-             qt_arch_version: 6.10.0
+             qt_arch_version: 6.9.2
     env:
       TARGET: ${{ matrix.target }}
       ARCH: ${{ matrix.target }}
-      OS: windows
+      OS: ${{ matrix.os }}
       SCCACHE_GHA_ENABLED: "true"
 
     steps:
@@ -54,8 +55,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ matrix.qt_arch_version }}
-          host: 'windows'
-          target: 'desktop'
+          host: ${{ matrix.os }}
           arch: ${{ matrix.qt_arch_target }}
           modules: qtmultimedia qt5compat
           cache: true
@@ -67,7 +67,7 @@ jobs:
 
       - name: Build Eden!
         shell: bash
-        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DCMAKE_C_COMPILER_LAUNCHER="sccache" -DCMAKE_CXX_COMPILER_LAUNCHER="sccache" -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
 
       - name: Pack Eden!
         shell: bash
@@ -86,10 +86,13 @@ jobs:
       matrix:
         include:
            - target: amd64
+             os: linux
+             qt_arch_target: linux_gcc_64
+             qt_arch_version: 6.9.2
     env:
       TARGET: ${{ matrix.target }}
       ARCH: ${{ matrix.target }}
-      OS: linux
+      OS: ${{ matrix.os }}
       SCCACHE_GHA_ENABLED: "true"
 
     steps:
@@ -111,13 +114,31 @@ jobs:
         run: |
           # Win32: CMakeLists.txt: Support ccache more openly
           git cherry-pick 8d5eed38feb03e87b869ab6de5aed0507253261c
+          # ffmpeg: proper drm detection
+          git cherry-pick 64766669eeb4e7c740e61b851a383b6b880d2a01
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ matrix.qt_arch_version }}
+          host: ${{ matrix.os }}
+          arch: ${{ matrix.qt_arch_target }}
+          modules: qtmultimedia qt5compat
+          cache: true
+          add-tools-to-path: true
+
+      - name: Install dependencies with cache
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: autoconf cmake g++ gcc git glslang-tools libasound2 libboost-context-dev libdrm-dev libglu1-mesa-dev libhidapi-dev libpulse-dev libtool libudev-dev libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxext-dev libxkbcommon-x11-0 mesa-common-dev nasm ninja-build qt6-base-private-dev libmbedtls-dev catch2 libfmt-dev liblz4-dev nlohmann-json3-dev libzstd-dev libssl-dev libavfilter-dev libavcodec-dev libswscale-dev pkg-config zlib1g-dev
+          version: 1.01
+
       - name: Build Eden!
         shell: bash
-        run: TARGET=appimage .ci/linux/build.sh -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+        run: TARGET=appimage .ci/linux/build.sh ${{ matrix.target }} -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DCMAKE_C_COMPILER_LAUNCHER="sccache clang" -DCMAKE_CXX_COMPILER_LAUNCHER="sccache clang" -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
 
       - name: Pack Eden!
         shell: bash
