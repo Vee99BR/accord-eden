@@ -31,18 +31,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Configure Git identity
-        shell: bash
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      - name: Cherry-pick fixes
-        shell: bash
-        run: |
-          # Win32: CMakeLists.txt: Support ccache more openly
-          git cherry-pick 8d5eed38feb03e87b869ab6de5aed0507253261c
-
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
@@ -67,7 +55,7 @@ jobs:
 
       - name: Build Eden!
         shell: bash
-        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DCMAKE_C_COMPILER_LAUNCHER="sccache" -DCMAKE_CXX_COMPILER_LAUNCHER="sccache" -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DUSE_CCACHE=ON -DCCACHE_PATH="sccache" -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
 
       - name: Pack Eden!
         shell: bash
@@ -103,20 +91,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Configure Git identity
-        shell: bash
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      - name: Cherry-pick fixes
-        shell: bash
-        run: |
-          # Win32: CMakeLists.txt: Support ccache more openly
-          git cherry-pick 8d5eed38feb03e87b869ab6de5aed0507253261c
-          # ffmpeg: proper drm detection
-          git cherry-pick 64766669eeb4e7c740e61b851a383b6b880d2a01
-
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
@@ -133,19 +107,19 @@ jobs:
       - name: Install dependencies with cache
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: autoconf cmake g++ gcc git glslang-tools libasound2 libboost-context-dev libdrm-dev libglu1-mesa-dev libhidapi-dev libpulse-dev libtool libudev-dev libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxext-dev libxkbcommon-x11-0 mesa-common-dev nasm ninja-build qt6-base-private-dev libmbedtls-dev catch2 libfmt-dev liblz4-dev nlohmann-json3-dev libzstd-dev libssl-dev libavfilter-dev libavcodec-dev libswscale-dev pkg-config zlib1g-dev
-          version: 1.01
+          packages: autoconf cmake g++ gcc git glslang-tools libasound2 libboost-context-dev libglu1-mesa-dev libhidapi-dev libpulse-dev libtool libudev-dev libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxext-dev libxkbcommon-x11-0 mesa-common-dev nasm ninja-build qt6-base-private-dev libmbedtls-dev catch2 libfmt-dev liblz4-dev nlohmann-json3-dev libzstd-dev libssl-dev libavfilter-dev libavcodec-dev libswscale-dev pkg-config zlib1g-dev libva-dev libvdpau-dev
+          version: 1.02
 
       - name: Build Eden!
         shell: bash
-        run: TARGET=appimage .ci/linux/build.sh ${{ matrix.target }} -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DCMAKE_C_COMPILER_LAUNCHER="sccache clang" -DCMAKE_CXX_COMPILER_LAUNCHER="sccache clang" -DUSE_CCACHE=ON -DYUZU_USE_BUNDLED_QT=OFF -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+        run: TARGET=appimage .ci/linux/build.sh ${{ matrix.target }} -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DUSE_CCACHE=ON -DCCACHE_PATH="sccache" -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
 
-      - name: Pack Eden!
-        shell: bash
-        run: DEVEL=true ./.ci/linux/package.sh
+     # - name: Pack Eden!
+     #   shell: bash
+     #   run: DEVEL=true ./.ci/linux/package.sh
 
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: eden-linux-${{ matrix.target }}.zip
-          path: ./*.AppImage
+     # - name: Upload Linux artifacts
+     #   uses: actions/upload-artifact@v4
+     #   with:
+     #     name: eden-linux-${{ matrix.target }}.zip
+    #     path: ./*.AppImage
