@@ -55,7 +55,7 @@ jobs:
 
       - name: Build Eden!
         shell: bash
-        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DUSE_CCACHE=ON -DCCACHE_PATH="sccache" -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DYUZU_USE_CPM=true -DUSE_CCACHE=ON -DCCACHE_PATH="sccache" -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
 
       - name: Pack Eden!
         shell: bash
