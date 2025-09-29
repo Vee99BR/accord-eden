@@ -55,7 +55,7 @@ jobs:
 
       - name: Build Eden!
         shell: bash
-        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DYUZU_USE_PRECOMPILED_HEADERS=OFF -DUSE_CCACHE=ON -DCCACHE_PATH="sccache" -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+        run: WINDEPLOYQT="$QT_ROOT_DIR/bin/windeployqt6.exe" .ci/windows/build.sh -DYUZU_USE_PRECOMPILED_HEADERS=OFF -DCMAKE_C_COMPILER_LAUNCHER="sccache" -DCMAKE_CXX_COMPILER_LAUNCHER="sccache"
 
       - name: Pack Eden!
         shell: bash
@@ -112,7 +112,7 @@ jobs:
 
       - name: Build Eden!
         shell: bash
-        run: TARGET=appimage .ci/linux/build.sh ${{ matrix.target }} -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DYUZU_USE_EXTERNAL_SDL2=ON -DYUZU_USE_BUNDLED_FFMPEG=ON -DYUZU_USE_EXTERNAL_VULKAN_UTILITY_LIBRARIES=ON -DYUZU_USE_EXTERNAL_VULKAN_SPIRV_TOOLS=ON -DDYNARMIC_USE_BUNDLED_EXTERNALS=ON -DYUZU_USE_CPM=ON -DUSE_CCACHE=ON -DCCACHE_PATH="sccache" -DCMAKE_SYSTEM_PROCESSOR="${{ matrix.target }}"
+        run: TARGET=appimage .ci/linux/build.sh ${{ matrix.target }} -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR/lib/cmake/Qt6" -DYUZU_USE_EXTERNAL_SDL2=ON -DYUZU_USE_BUNDLED_FFMPEG=ON -DYUZU_USE_EXTERNAL_VULKAN_UTILITY_LIBRARIES=ON -DYUZU_USE_EXTERNAL_VULKAN_SPIRV_TOOLS=ON -DDYNARMIC_USE_BUNDLED_EXTERNALS=ON -DYUZU_USE_CPM=ON -DUSE_CCACHE=ON -DCCACHE_PATH="sccache"  -DCMAKE_C_COMPILER_LAUNCHER="sccache" -DCMAKE_CXX_COMPILER_LAUNCHER="sccache"
 
      # - name: Pack Eden!
      #   shell: bash
