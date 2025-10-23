@@ -1,6 +1,6 @@
 # Accord: Eden
 
-This repository contains automation scripts that serve two main purposes:
+This repository contains automation scripts that serve one main purpose:
 
 1. **[A]ccord Branch Central Management**
    Allows managing branches in the mirror repository (`eden-mirror`) manually or automatically.
@@ -13,10 +13,6 @@ This repository contains automation scripts that serve two main purposes:
    - The `master` branch is synced automatically daily at KTT (Kasane Teto Time, or 01:04 UTC).
    - `branch_to_sync` is required for `copy` or `merge`.
    - The mirror repository is isolated and up-to-date, independent from the upstream infrastructure.
-
-2. **[B]uild a Mirror of Eden**
-   Standalone GitHub Action script to build a binary from the `eden-mirror` repository.
-   **Currently supported build environment: Windows.**
 
 ---
 
@@ -51,11 +47,6 @@ Since these workflows need to push to another repository (`eden-mirror`), the de
   - `merge` — replay commits from a branch onto `master`.
   - `reset` — reset the mirror `master` to upstream `master`.
 - Specify `branch_to_sync` for `copy` or `merge`.
-
-### [B]uild a Mirror of Eden
-
-- Build Eden binaries from the `eden-mirror` repository.
-- Supported environment: Windows.
 
 ---
 
